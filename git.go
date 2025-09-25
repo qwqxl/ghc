@@ -13,7 +13,7 @@ import (
 
 // GitOperations 包含所有 Git 相关操作
 type GitOperations struct {
-	repo *git.Repository
+	repo     *git.Repository
 	repoPath string
 }
 
@@ -25,7 +25,7 @@ func NewGitOperations(repoPath string) (*GitOperations, error) {
 	}
 
 	return &GitOperations{
-		repo: repo,
+		repo:     repo,
 		repoPath: repoPath,
 	}, nil
 }

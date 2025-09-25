@@ -1,143 +1,144 @@
 package main
 
 import (
-  "fmt"
-  "os"
-  "os/exec"
-  "strings"
-  "time"
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
 )
 
 // handleInit 处理初始化命令
 func handleInit() {
-  if fileExists(ConfigFile) {
-    fmt.Printf("项目已经初始化，配置文件 %s 已存在\n", ConfigFile)
-    return
-  }
+	if fileExists(ConfigFile) {
+		fmt.Printf("项目已经初始化，配置文件 %s 已存在\n", ConfigFile)
+		return
+	}
 
-  // 创建默认配置
-  config := &Config{
-    Repo:         "",
-    Branch:       "main",
-    AutoPush:     true,
-    BuildCommand: "go build ./...",
-    Version:      "0.0.1",
-    TagPrefix:    "v",
-  }
+	// 创建默认配置
+	config := &Config{
+		Repo:         "",
+		Branch:       "main",
+		AutoPush:     true,
+		BuildCommand: "go build ./...",
+		Version:      "0.0.1",
+		TagPrefix:    "v",
+	}
 
-  err := SaveConfig(config)
-  if err != nil {
-    fmt.Printf("创建配置文件失败: %v\n", err)
-    return
-  }
+	err := SaveConfig(config)
+	if err != nil {
+		fmt.Printf("创建配置文件失败: %v\n", err)
+		return
+	}
 
-  // 创建仓库锁定文件
-  lock := &RepoLock{
-    Repo:   "",
-    Branch: "main",
-  }
+	// 创建仓库锁定文件
+	lock := &RepoLock{
+		Repo:   "",
+		Branch: "main",
+	}
 
-  err = SaveRepoLock(lock)
-  if err != nil {
-    fmt.Printf("创建仓库锁定文件失败: %v\n", err)
-    return
-  }
+	err = SaveRepoLock(lock)
+	if err != nil {
+		fmt.Printf("创建仓库锁定文件失败: %v\n", err)
+		return
+	}
 
-  fmt.Println("项目初始化成功！")
-  fmt.Printf("已创建配置文件: %s\n", ConfigFile)
-  fmt.Printf("已创建锁定文件: %s\n", RepoLockFile)
-  fmt.Println("请使用 'ghc bind <repo-url>' 绑定仓库")
+	fmt.Println("项目初始化成功！")
+	fmt.Printf("已创建配置文件: %s\n", ConfigFile)
+	fmt.Printf("已创建锁定文件: %s\n", RepoLockFile)
+	fmt.Println("请使用 'ghc bind <repo-url>' 绑定仓库")
 }
 
 // handleBind 处理仓库绑定命令
 func handleBind(args []string) {
-  if len(args) == 0 {
-    fmt.Println("请提供仓库地址")
-    fmt.Println("使用方法: ghc bind <repo-url>")
-    return
-  }
+	if len(args) == 0 {
+		fmt.Println("请提供仓库地址")
+		fmt.Println("使用方法: ghc bind <repo-url>")
+		return
+	}
 
-  repoUrl := args[0]
-  if !strings.HasPrefix(repoUrl, "https://github.com/") && !strings.HasPrefix(repoUrl, "git@github.com:") {
-    fmt.Println("请提供有效的 GitHub 仓库地址")
-    return
-  }
+	repoUrl := args[0]
+	if !strings.HasPrefix(repoUrl, "https://github.com/") && !strings.HasPrefix(repoUrl, "git@github.com:") {
+		fmt.Println("请提供有效的 GitHub 仓库地址")
+		return
+	}
 
-  // 加载配置文件
-  config, err := LoadConfig()
-  if err != nil {
-    fmt.Printf("加载配置失败: %v\n", err)
-    return
-  }
+	// 加载配置文件
+	config, err := LoadConfig()
+	if err != nil {
+		fmt.Printf("加载配置失败: %v\n", err)
+		return
+	}
 
-  // 更新配置
-  config.Repo = repoUrl
-  err = SaveConfig(config)
-  if err != nil {
-    fmt.Printf("保存配置失败: %v\n", err)
-    return
-  }
+	// 更新配置
+	config.Repo = repoUrl
+	err = SaveConfig(config)
+	if err != nil {
+		fmt.Printf("保存配置失败: %v\n", err)
+		return
+	}
 
-  // 更新锁定文件
-  lock := &RepoLock{
-    Repo:   repoUrl,
-    Branch: config.Branch,
-  }
-  err = SaveRepoLock(lock)
-  if err != nil {
-    fmt.Printf("保存仓库锁定文件失败: %v\n", err)
-    return
-  }
+	// 更新锁定文件
+	lock := &RepoLock{
+		Repo:   repoUrl,
+		Branch: config.Branch,
+	}
+	err = SaveRepoLock(lock)
+	if err != nil {
+		fmt.Printf("保存仓库锁定文件失败: %v\n", err)
+		return
+	}
 
-  fmt.Printf("仓库绑定成功: %s\n", repoUrl)
+	fmt.Printf("仓库绑定成功: %s\n", repoUrl)
 }
 
 // handleStatus 处理状态查看命令
 func handleStatus() {
-  config, err := LoadConfig()
-  if err != nil {
-    fmt.Printf("加载配置失败: %v\n", err)
-    return
-  }
+	config, err := LoadConfig()
+	if err != nil {
+		fmt.Printf("加载配置失败: %v\n", err)
+		return
+	}
 
-  if config.Repo == "" {
-    fmt.Println("仓库未绑定，请使用 ghc bind <repo-url> 绑定仓库")
-    return
-  }
+	if config.Repo == "" {
+		fmt.Println("仓库未绑定，请使用 ghc bind <repo-url> 绑定仓库")
+		return
+	}
 
-  fmt.Printf("repo: %s\n", config.Repo)
-  fmt.Printf("branch: %s\n", config.Branch)
-  fmt.Printf("version: %s\n", config.Version)
-  fmt.Printf("tag_prefix: %s\n", config.TagPrefix)
-  fmt.Printf("auto_push: %t\n", config.AutoPush)
-  fmt.Printf("build_command: %s\n", config.BuildCommand)
+	fmt.Printf("repo: %s\n", config.Repo)
+	fmt.Printf("branch: %s\n", config.Branch)
+	fmt.Printf("version: %s\n", config.Version)
+	fmt.Printf("tag_prefix: %s\n", config.TagPrefix)
+	fmt.Printf("auto_push: %t\n", config.AutoPush)
+	fmt.Printf("build_command: %s\n", config.BuildCommand)
 }
 
 // handleTag 处理标签相关命令
 func handleTag(args []string) {
-  if len(args) == 0 {
-    fmt.Println("请提供标签操作参数")
-    fmt.Println("使用方法:")
-    fmt.Println("  ghc tag <version>           创建新标签")
-    fmt.Println("  ghc tag list                查看所有标签")
-    fmt.Println("  ghc tag checkout <version>  切换到指定版本")
-    return
-  }
+	if len(args) == 0 {
+		fmt.Println("请提供标签操作参数")
+		fmt.Println("使用方法:")
+		fmt.Println("  ghc tag <version>           创建新标签")
+		fmt.Println("  ghc tag list                查看所有标签")
+		fmt.Println("  ghc tag checkout <version>  切换到指定版本")
+		return
+	}
 
-  subCommand := args[0]
-  switch subCommand {
-  case "list":
-    handleTagList()
-  case "checkout":
-    if len(args) < 2 {
-      fmt.Println("请提供要切换的版本号")
-      return
-    }
-    handleTagCheckout(args[1])
-  default:
-    // 默认为创建标签
-    handleTagCreate(subCommand)
-  }
+	subCommand := args[0]
+	switch subCommand {
+	case "list":
+		handleTagList()
+	case "checkout":
+		if len(args) < 2 {
+			fmt.Println("请提供要切换的版本号")
+			return
+		}
+		handleTagCheckout(args[1])
+	default:
+		// 默认为创建标签
+		handleTagCreate(subCommand)
+	}
 }
 
 // handleTagCreate 创建新标签
@@ -410,6 +411,12 @@ func buildProject() error {
 		return runCommand("go build ./...")
 	}
 
+	// 执行预编译钩子
+	if err := executePreBuildHooks(config); err != nil {
+		return fmt.Errorf("预编译失败: %v", err)
+	}
+
+	// 执行主构建命令
 	if config.BuildCommand == "" {
 		return runCommand("go build ./...")
 	}
@@ -517,19 +524,82 @@ func createReleaseTag(version string) error {
 	return nil
 }
 
-// runCommand 执行系统命令
-func runCommand(command string) error {
-	fmt.Printf("执行命令: %s\n", command)
-	
+// executePreBuildHooks 执行预编译钩子
+func executePreBuildHooks(config *Config) error {
+	if !config.PreBuild.Enabled {
+		return nil // 预编译未启用，直接返回
+	}
+
+	fmt.Println("🔧 执行预编译钩子...")
+
+	// 执行预编译脚本（如果有）
+	if config.PreBuild.Script != "" {
+		fmt.Printf("执行预编译脚本: %s\n", config.PreBuild.Script)
+		if err := runCommandWithTimeout(config.PreBuild.Script, config.PreBuild.Timeout); err != nil {
+			if config.PreBuild.FailOnError {
+				return fmt.Errorf("预编译脚本执行失败: %v", err)
+			}
+			fmt.Printf("⚠️ 预编译脚本执行失败（已忽略）: %v\n", err)
+		}
+	}
+
+	// 执行预编译命令列表
+	for i, command := range config.PreBuild.Commands {
+		if command == "" {
+			continue
+		}
+		fmt.Printf("执行预编译命令 [%d/%d]: %s\n", i+1, len(config.PreBuild.Commands), command)
+		if err := runCommandWithTimeout(command, config.PreBuild.Timeout); err != nil {
+			if config.PreBuild.FailOnError {
+				return fmt.Errorf("预编译命令执行失败: %v", err)
+			}
+			fmt.Printf("⚠️ 预编译命令执行失败（已忽略）: %v\n", err)
+		}
+	}
+
+	fmt.Println("✓ 预编译钩子执行完成")
+	return nil
+}
+
+// runCommandWithTimeout 执行带超时的系统命令
+func runCommandWithTimeout(command string, timeoutSeconds int) error {
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 300 // 默认5分钟超时
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSeconds)*time.Second)
+	defer cancel()
+
 	// 分割命令和参数
 	parts := strings.Fields(command)
 	if len(parts) == 0 {
 		return fmt.Errorf("空命令")
 	}
-	
+
+	cmd := exec.CommandContext(ctx, parts[0], parts[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if ctx.Err() == context.DeadlineExceeded {
+		return fmt.Errorf("命令执行超时（%d秒）", timeoutSeconds)
+	}
+	return err
+}
+
+// runCommand 执行系统命令
+func runCommand(command string) error {
+	fmt.Printf("执行命令: %s\n", command)
+
+	// 分割命令和参数
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return fmt.Errorf("空命令")
+	}
+
 	cmd := exec.Command(parts[0], parts[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	
+
 	return cmd.Run()
 }

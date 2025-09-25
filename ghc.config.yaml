@@ -1,6 +1,15 @@
-repo: https://github.com/qwqxl/ghc
+repo: "https://github.com/qwqxl/ghc.git"
 branch: main
 auto_push: true
-build_command: go build ./...
+build_command: "go build -o ghc.exe"
 version: 1.0.0
 tag_prefix: v
+pre_build:
+  enabled: true
+  commands:
+    - "powershell -Command \"Write-Host '开始预编译处理...'\""
+    - "go mod tidy"
+    - "go fmt ./..."
+  script: ""
+  timeout: 300
+  fail_on_error: true
