@@ -1,0 +1,6 @@
+repo: https://github.com/test/example.git
+branch: main
+auto_push: true
+build_command: go build ./...
+version: 1.0.0
+tag_prefix: v

@@ -1,0 +1,33 @@
+# ghc 工具自身配置文件
+# 用于配置 ghc 工具的默认行为和文件名
+
+config_filename: ghc.config.yaml
+repo_lock_filename: .repo.lock
+default_repo: https://github.com/username/project.git
+default_version: 0.0.1
+default_branch: main
+default_tag_prefix: v
+
+# CLI 命令映射
+cli:
+  init: init
+  bind: bind
+  tag: tag
+  status: status
+  st: status  # status 的简写
+  help: help
+
+# 工具行为配置
+behavior:
+  auto_push: true
+  auto_build: false
+  build_command: "go build ./..."
+  confirm_before_push: false
+  verbose_output: false
+
+# Git 配置
+git:
+  default_remote: origin
+  default_branch: main
+  tag_message_template: "Release version {version}"
+  commit_message_template: "Bump version to {version}"
