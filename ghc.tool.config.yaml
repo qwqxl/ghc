@@ -3,9 +3,9 @@
 
 config_filename: ghc.config.yaml
 repo_lock_filename: .repo.lock
-default_repo: https://github.com/username/project.git
+default_repo: https://github.com/qwqxl/ghc.git
 default_version: 0.0.1
-default_branch: main
+default_branch: master
 default_tag_prefix: v
 
 # CLI 命令映射
