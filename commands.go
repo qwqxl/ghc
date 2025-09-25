@@ -305,6 +305,23 @@ func handleTagCheckout(version string) {
 
 // handlePublish 处理发布命令
 func handlePublish(args []string) {
+	// 检查是否请求帮助
+	if len(args) > 0 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help") {
+		fmt.Println("ghc publish/release - 发布项目到 GitHub")
+		fmt.Println("")
+		fmt.Println("使用方法:")
+		fmt.Println("  ghc publish [version]    发布项目到 GitHub")
+		fmt.Println("  ghc release [version]    发布项目到 GitHub (同 publish)")
+		fmt.Println("")
+		fmt.Println("参数:")
+		fmt.Println("  version                  发布版本号 (可选，默认使用配置文件中的版本)")
+		fmt.Println("")
+		fmt.Println("示例:")
+		fmt.Println("  ghc publish v1.0.0       发布版本 v1.0.0")
+		fmt.Println("  ghc release              使用配置文件中的版本发布")
+		return
+	}
+
 	// 获取版本号参数
 	var version string
 	if len(args) > 0 {
