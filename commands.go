@@ -442,14 +442,26 @@ func commitAllFiles(version string) error {
 
 // pushToGitHub 推送到 GitHub
 func pushToGitHub() error {
-	config, err := LoadConfig()
+	// 获取当前分支名
+	cwd, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("加载配置失败: %v", err)
+		return fmt.Errorf("获取当前目录失败: %v", err)
 	}
 
-	branch := config.Branch
-	if branch == "" {
-		branch = "main"
+	gitOps, err := NewGitOperations(cwd)
+	if err != nil {
+		return fmt.Errorf("初始化 Git 操作失败: %v", err)
+	}
+
+	branch, err := gitOps.GetCurrentBranch()
+	if err != nil {
+		// 如果获取失败，使用配置文件中的分支或默认分支
+		config, configErr := LoadConfig()
+		if configErr == nil && config.Branch != "" {
+			branch = config.Branch
+		} else {
+			branch = "main"
+		}
 	}
 
 	return runCommand(fmt.Sprintf("git push -u origin %s", branch))
