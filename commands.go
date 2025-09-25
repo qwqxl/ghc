@@ -3,6 +3,7 @@ package main
 import (
   "fmt"
   "os"
+  "os/exec"
   "strings"
   "time"
 )
@@ -300,4 +301,206 @@ func handleTagCheckout(version string) {
 	}
 
 	fmt.Printf("Successfully checked out tag '%s'\n", version)
+}
+
+// handlePublish 处理发布命令
+func handlePublish(args []string) {
+	// 获取版本号参数
+	var version string
+	if len(args) > 0 {
+		version = args[0]
+	} else {
+		// 如果没有提供版本号，尝试从配置文件获取
+		config, err := LoadConfig()
+		if err != nil {
+			fmt.Printf("加载配置失败: %v\n", err)
+			return
+		}
+		version = config.Version
+		if version == "" {
+			version = "v1.0.0" // 默认版本
+		}
+	}
+
+	fmt.Printf("开始发布项目，版本: %s\n", version)
+
+	// 1. 编译项目
+	fmt.Println("步骤 1/6: 编译项目...")
+	if err := buildProject(); err != nil {
+		fmt.Printf("编译失败: %v\n", err)
+		return
+	}
+	fmt.Println("✓ 编译成功")
+
+	// 2. 获取当前工作目录
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("获取当前目录失败: %v\n", err)
+		return
+	}
+
+	// 3. 初始化 Git 仓库（如果需要）
+	fmt.Println("步骤 2/6: 检查 Git 仓库...")
+	if !IsGitRepository(cwd) {
+		fmt.Println("初始化 Git 仓库...")
+		if err := InitRepository(cwd); err != nil {
+			fmt.Printf("初始化 Git 仓库失败: %v\n", err)
+			return
+		}
+	}
+	fmt.Println("✓ Git 仓库就绪")
+
+	// 4. 添加远程仓库
+	fmt.Println("步骤 3/6: 配置远程仓库...")
+	if err := setupRemoteRepository(); err != nil {
+		fmt.Printf("配置远程仓库失败: %v\n", err)
+		return
+	}
+	fmt.Println("✓ 远程仓库配置完成")
+
+	// 5. 提交所有文件
+	fmt.Println("步骤 4/6: 提交文件...")
+	if err := commitAllFiles(version); err != nil {
+		fmt.Printf("提交文件失败: %v\n", err)
+		return
+	}
+	fmt.Println("✓ 文件提交完成")
+
+	// 6. 推送到 GitHub
+	fmt.Println("步骤 5/6: 推送到 GitHub...")
+	if err := pushToGitHub(); err != nil {
+		fmt.Printf("推送失败: %v\n", err)
+		return
+	}
+	fmt.Println("✓ 推送完成")
+
+	// 7. 创建发布标签
+	fmt.Println("步骤 6/6: 创建发布标签...")
+	if err := createReleaseTag(version); err != nil {
+		fmt.Printf("创建标签失败: %v\n", err)
+		return
+	}
+	fmt.Println("✓ 发布标签创建完成")
+
+	fmt.Printf("\n🎉 项目发布成功！版本: %s\n", version)
+}
+
+// buildProject 编译项目
+func buildProject() error {
+	config, err := LoadConfig()
+	if err != nil {
+		// 如果没有配置文件，使用默认构建命令
+		return runCommand("go build ./...")
+	}
+
+	if config.BuildCommand == "" {
+		return runCommand("go build ./...")
+	}
+
+	return runCommand(config.BuildCommand)
+}
+
+// setupRemoteRepository 设置远程仓库
+func setupRemoteRepository() error {
+	config, err := LoadConfig()
+	if err != nil {
+		return fmt.Errorf("加载配置失败: %v", err)
+	}
+
+	if config.Repo == "" {
+		return fmt.Errorf("未配置远程仓库地址，请先使用 'ghc bind <repo-url>' 绑定仓库")
+	}
+
+	// 检查是否已经添加了远程仓库
+	cwd, _ := os.Getwd()
+	gitOps, err := NewGitOperations(cwd)
+	if err == nil {
+		// 如果能获取到远程 URL，说明已经配置了
+		if _, err := gitOps.GetRemoteURL(); err == nil {
+			return nil // 远程仓库已存在
+		}
+	}
+
+	// 添加远程仓库
+	return runCommand(fmt.Sprintf("git remote add origin %s", config.Repo))
+}
+
+// commitAllFiles 提交所有文件
+func commitAllFiles(version string) error {
+	// 添加所有文件
+	if err := runCommand("git add ."); err != nil {
+		return fmt.Errorf("添加文件失败: %v", err)
+	}
+
+	// 提交文件 - 使用 exec.Command 直接处理参数
+	commitMessage := fmt.Sprintf("Release version %s", version)
+	cmd := exec.Command("git", "commit", "-m", commitMessage)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// pushToGitHub 推送到 GitHub
+func pushToGitHub() error {
+	config, err := LoadConfig()
+	if err != nil {
+		return fmt.Errorf("加载配置失败: %v", err)
+	}
+
+	branch := config.Branch
+	if branch == "" {
+		branch = "main"
+	}
+
+	return runCommand(fmt.Sprintf("git push -u origin %s", branch))
+}
+
+// createReleaseTag 创建发布标签
+func createReleaseTag(version string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("获取当前目录失败: %v", err)
+	}
+
+	gitOps, err := NewGitOperations(cwd)
+	if err != nil {
+		return fmt.Errorf("初始化 Git 操作失败: %v", err)
+	}
+
+	// 创建标签
+	tagMessage := fmt.Sprintf("Release version %s", version)
+	if err := gitOps.CreateTag(version, tagMessage); err != nil {
+		return fmt.Errorf("创建标签失败: %v", err)
+	}
+
+	// 推送标签
+	if err := gitOps.PushTag(version); err != nil {
+		return fmt.Errorf("推送标签失败: %v", err)
+	}
+
+	// 更新配置文件中的版本号
+	config, err := LoadConfig()
+	if err == nil {
+		config.Version = version
+		SaveConfig(config)
+	}
+
+	return nil
+}
+
+// runCommand 执行系统命令
+func runCommand(command string) error {
+	fmt.Printf("执行命令: %s\n", command)
+	
+	// 分割命令和参数
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return fmt.Errorf("空命令")
+	}
+	
+	cmd := exec.Command(parts[0], parts[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	
+	return cmd.Run()
 }

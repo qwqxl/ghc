@@ -23,6 +23,8 @@ func main() {
     handleStatus()
   case "tag":
     handleTag(args)
+  case "publish", "release":
+    handlePublish(args)
   case "help", "-h", "--help":
     showHelp()
   default:
@@ -41,5 +43,7 @@ func showHelp() {
   fmt.Println("  ghc tag <version>           创建新标签")
   fmt.Println("  ghc tag list                查看所有标签")
   fmt.Println("  ghc tag checkout <version>  切换到指定版本")
+  fmt.Println("  ghc publish [version]       发布项目到 GitHub")
+  fmt.Println("  ghc release [version]       发布项目到 GitHub (同 publish)")
   fmt.Println("  ghc help                    显示帮助信息")
 }
