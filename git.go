@@ -218,7 +218,8 @@ func (g *GitOperations) ValidateRepository() error {
 		return fmt.Errorf("failed to get status: %v", err)
 	}
 
-	if !status.IsClean() {
+	// 简单检查：如果状态映射不为空，说明有未提交的更改
+	if len(status) > 0 {
 		return fmt.Errorf("repository has uncommitted changes")
 	}
 

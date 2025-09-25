@@ -1,4 +1,4 @@
-repo: https://github.com/test/example.git
+repo: https://github.com/qwqxl/ghc
 branch: main
 auto_push: true
 build_command: go build ./...

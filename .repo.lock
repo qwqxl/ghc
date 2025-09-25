@@ -1,2 +1,4 @@
-repo: https://github.com/test/example.git
+repo: https://github.com/qwqxl/ghc
 branch: main
+current_version: ""
+last_updated: ""
